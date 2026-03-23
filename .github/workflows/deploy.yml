@@ -1,23 +1,48 @@
 name: Deploy GitHub Pages (Manual)
 
+# Cho phép chạy thủ công từ tab Actions
 on:
-  workflow_dispatch:   # 🔥 chỉ chạy khi bấm nút
+  workflow_dispatch:
+
+# Cấp quyền cần thiết để Action có thể Deploy lên Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Đảm bảo chỉ có một bản deploy chạy tại một thời điểm
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps:deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # Bước quan trọng: Gom tất cả vào một thư mục để deploy
+      # Vì file của bạn nằm rải rác (js và public), bước này sẽ gom lại
+      - name: Prepare Files
+        run: |
+          mkdir -p _site
+          cp -r public/* _site/
+          cp -r js _site/ || true 
+          # Lưu ý: Lệnh trên copy index.html từ public ra gốc, và giữ thư mục js
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public   # thư mục web của bạn
+          # Deploy nội dung từ thư mục _site vừa tạo
+          path: './_site'
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
